@@ -1,136 +1,185 @@
 
-import json
+
+import csv
 import os
 
-FILE_NAME = "contacts.json"
+FILE_NAME = "contacts.csv"
+
+
+def initialize_file():
+    if not os.path.exists(FILE_NAME):
+        with open(FILE_NAME, "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Name", "Phone", "Email"])
 
 
 def load_contacts():
-    try:
-        with open(FILE_NAME, "r") as file:
-            data = json.load(file)
-            return data if isinstance(data, list) else []
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
+    with open(FILE_NAME, "r", newline="") as file:
+        reader = csv.DictReader(file)
+        return list(reader)
 
 
 def save_contacts(contacts):
-    with open(FILE_NAME, "w") as file:
-        json.dump(contacts, file, indent=4)
+    with open(FILE_NAME, "w", newline="") as file:
+        writer = csv.DictWriter(
+            file, fieldnames=["Name", "Phone", "Email"]
+        )
+        writer.writeheader()
+        writer.writerows(contacts)
 
 
-def add_contact(contacts):
+def add_contact():
+    print("\n--- ADD NEW CONTACT ---")
+
     name = input("Enter name: ").strip()
     phone = input("Enter phone number: ").strip()
     email = input("Enter email: ").strip()
 
-    if not name or not phone:
-        print("Name and phone are required!")
+    if not name or not phone or not email:
+        print("All fields are required!")
+        return
+
+    contacts = load_contacts()
+
+    if any(c["Phone"] == phone for c in contacts):
+        print("This phone number already exists!")
         return
 
     contacts.append({
-        "name": name,
-        "phone": phone,
-        "email": email
+        "Name": name,
+        "Phone": phone,
+        "Email": email
     })
 
     save_contacts(contacts)
     print("Contact added successfully!")
 
 
-def list_contacts(contacts):
+def view_contacts():
+    print("\n--- ALL CONTACTS ---")
+
+    contacts = load_contacts()
+
     if not contacts:
-        print("No contacts found.")
+        print("No contacts available!")
         return
 
-    print("\n--- CONTACT LIST ---")
     for i, contact in enumerate(contacts, start=1):
-        print(f"{i}. {contact['name']}")
-        print(f"   Phone: {contact['phone']}")
-        print(f"   Email: {contact['email']}")
+        print(f"\nContact {i}")
+        print("Name :", contact["Name"])
+        print("Phone:", contact["Phone"])
+        print("Email:", contact["Email"])
 
 
-def search_contact(contacts):
-    query = input("Enter name to search: ").strip().lower()
+def search_contact():
+    print("\n--- SEARCH CONTACT ---")
 
-    results = [
+    name = input("Enter name to search: ").strip().lower()
+    contacts = load_contacts()
+
+    found = [
         c for c in contacts
-        if query in c["name"].lower()
+        if name in c["Name"].lower()
     ]
 
-    if results:
-        for contact in results:
-            print(contact)
+    if found:
+        for contact in found:
+            print("\nName :", contact["Name"])
+            print("Phone:", contact["Phone"])
+            print("Email:", contact["Email"])
     else:
-        print("Contact not found.")
+        print("Contact not found!")
 
 
-def edit_contact(contacts):
-    name = input("Enter the name to edit: ").strip().lower()
+def update_contact():
+    print("\n--- UPDATE CONTACT ---")
+
+    phone = input("Enter phone number of contact: ").strip()
+    contacts = load_contacts()
 
     for contact in contacts:
-        if contact["name"].lower() == name:
-            new_name = input("New name: ").strip()
-            new_phone = input("New phone: ").strip()
-            new_email = input("New email: ").strip()
+        if contact["Phone"] == phone:
+            print("Leave a field empty to keep its old value.")
 
-            if new_name:
-                contact["name"] = new_name
-            if new_phone:
-                contact["phone"] = new_phone
-            if new_email:
-                contact["email"] = new_email
+            name = input("Enter new name: ").strip()
+            new_phone = input("Enter new phone: ").strip()
+            email = input("Enter new email: ").strip()
+
+            if new_phone and any(
+                c["Phone"] == new_phone and c is not contact
+                for c in contacts
+            ):
+                print("This phone number already exists!")
+                return
+
+            contact["Name"] = name or contact["Name"]
+            contact["Phone"] = new_phone or contact["Phone"]
+            contact["Email"] = email or contact["Email"]
 
             save_contacts(contacts)
             print("Contact updated successfully!")
             return
 
-    print("Contact not found.")
+    print("Contact not found!")
 
 
-def delete_contact(contacts):
-    name = input("Enter the name to delete: ").strip().lower()
+def delete_contact():
+    print("\n--- DELETE CONTACT ---")
 
-    for contact in contacts:
-        if contact["name"].lower() == name:
-            contacts.remove(contact)
-            save_contacts(contacts)
-            print("Contact deleted successfully!")
-            return
+    phone = input("Enter phone number to delete: ").strip()
+    contacts = load_contacts()
 
-    print("Contact not found.")
+    updated_contacts = [
+        c for c in contacts if c["Phone"] != phone
+    ]
+
+    if len(updated_contacts) == len(contacts):
+        print("Contact not found!")
+        return
+
+    save_contacts(updated_contacts)
+    print("Contact deleted successfully!")
 
 
 def main():
-    contacts = load_contacts()
+    initialize_file()
 
     while True:
-        print("\n===== CONTACT BOOK =====")
+        print("\n====== CONTACT BOOK ======")
         print("1. Add Contact")
-        print("2. List Contacts")
+        print("2. View Contacts")
         print("3. Search Contact")
-        print("4. Edit Contact")
+        print("4. Update Contact")
         print("5. Delete Contact")
         print("6. Exit")
 
-        choice = input("Enter your choice: ")
+        choice = input("\nEnter your choice (1-6): ").strip()
 
         if choice == "1":
-            add_contact(contacts)
+            add_contact()
+
         elif choice == "2":
-            list_contacts(contacts)
+            view_contacts()
+
         elif choice == "3":
-            search_contact(contacts)
+            search_contact()
+
         elif choice == "4":
-            edit_contact(contacts)
+            update_contact()
+
         elif choice == "5":
-            delete_contact(contacts)
+            delete_contact()
+
         elif choice == "6":
             print("Thank you for using Contact Book!")
             break
+
         else:
-            print("Invalid choice. Try again.")
+            print("Invalid choice! Please enter 1-6.")
 
 
 if __name__ == "__main__":
     main()
+
+
+    
